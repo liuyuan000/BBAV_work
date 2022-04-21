@@ -5,6 +5,8 @@ import time
 import os
 import matplotlib.pyplot as plt
 import func_utils
+from ipdb import set_trace
+import math
 
 def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image.
@@ -99,6 +101,7 @@ class TestModule(object):
             image = data_dict['image'][0].to(self.device)
             img_id = data_dict['img_id'][0]
             print('processing {}/{} image ...'.format(cnt, len(data_loader)))
+            # set_trace()
             begin_time = time.time()
             with torch.no_grad():
                 pr_decs = self.model(image)
@@ -108,7 +111,10 @@ class TestModule(object):
             torch.cuda.synchronize(self.device)
             decoded_pts = []
             decoded_scores = []
-            predictions = self.decoder.ctdet_decode(pr_decs)
+            predictions, angles = self.decoder.ctdet_decode(pr_decs)
+            # angles = torch.squeeze(angles, 0)
+            # angles = torch.squeeze(angles, 0).cpu().numpy()
+            
             pts0, scores0 = func_utils.decode_prediction(predictions, dsets, args, img_id, down_ratio)
             decoded_pts.append(pts0)
             decoded_scores.append(scores0)
@@ -134,6 +140,7 @@ class TestModule(object):
             #"""
             ori_image = dsets.load_image(cnt)
             height, width, _ = ori_image.shape
+            # angles = np.resize(angles, (height,width))
             # ori_image = cv2.resize(ori_image, (args.input_w, args.input_h))
             # ori_image = cv2.resize(ori_image, (args.input_w//args.down_ratio, args.input_h//args.down_ratio))
             #nms
@@ -154,11 +161,17 @@ class TestModule(object):
                     ll = (np.asarray(tl, np.float32) + np.asarray(bl, np.float32)) / 2
 
                     box = np.asarray([tl, tr, br, bl], np.float32)
+                    
                     cen_pts = np.mean(box, axis=0)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(tt[0]), int(tt[1])), (0,0,255),1,1)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(rr[0]), int(rr[1])), (255,0,255),1,1)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(bb[0]), int(bb[1])), (0,255,0),1,1)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(ll[0]), int(ll[1])), (255,0,0),1,1)
+                    # if int(cen_pts[0]/down_ratio) < angles.shape[0] and int(cen_pts[1]/down_ratio) < angles.shape[1]:
+                    angle_point = [0,0]
+                    angle_point[0] = cen_pts[0] + math.cos(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
+                    angle_point[1] = cen_pts[1] + math.sin(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
+                    cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(angle_point[0]), int(angle_point[1])), (255,255,255),2,2)
 
                     # cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(tl[0]), int(tl[1])), (0,0,255),1,1)
                     # cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(tr[0]), int(tr[1])), (255,0,255),1,1)
@@ -167,7 +180,7 @@ class TestModule(object):
                     ori_image = cv2.drawContours(ori_image, [np.int0(box)], -1, (255,0,255),1,1)
                     # box = cv2.boxPoints(cv2.minAreaRect(box))
                     # ori_image = cv2.drawContours(ori_image, [np.int0(box)], -1, (0,255,0),1,1)
-                    cv2.putText(ori_image, '{:.2f} {}'.format(score, cat), (box[1][0], box[1][1]),
+                    cv2.putText(ori_image, '{:.2f} {}'.format(score, cat), (int(box[1][0]), int(box[1][1])),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.5, (0,255,255), 1,1)
 
             if args.dataset == 'hrsc':
@@ -182,11 +195,11 @@ class TestModule(object):
                     box = np.int0(box)
                     cv2.drawContours(ori_image, [box], 0, (255, 255, 255), 1)
 
-            cv2.imshow('pr_image', ori_image)
-            k = cv2.waitKey(0) & 0xFF
-            if k == ord('q'):
-                cv2.destroyAllWindows()
-                exit()
+            cv2.imwrite("result_DLR_7/" + img_id + ".jpg", ori_image)
+            # k = cv2.waitKey(0) & 0xFF
+            # if k == ord('q'):
+            #     cv2.destroyAllWindows()
+            #     exit()
             #"""
 
         total_time = total_time[1:]

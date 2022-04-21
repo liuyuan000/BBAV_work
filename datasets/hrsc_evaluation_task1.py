@@ -16,7 +16,9 @@ import os
 #import cPickle
 import numpy as np
 import matplotlib.pyplot as plt
-from . import polyiou
+import sys
+sys.path.append("/home/liuyuan/BBAVectors/datasets/DOTA_devkit/")
+import polyiou
 from functools import partial
 import cv2
 

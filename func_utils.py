@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+import sys
+sys.path.append("/home/liuyuan/BBAVectors/")
 from datasets.DOTA_devkit.ResultMerge_multi_process import py_cpu_nms_poly_fast, py_cpu_nms_poly
 
 

@@ -7,35 +7,23 @@ from .DOTA_devkit.ResultMerge_multi_process import mergebypoly
 class DOTA(BaseDataset):
     def __init__(self, data_dir, phase, input_h=None, input_w=None, down_ratio=None):
         super(DOTA, self).__init__(data_dir, phase, input_h, input_w, down_ratio)
-        self.category = ['plane',
-                         'baseball-diamond',
-                         'bridge',
-                         'ground-track-field',
-                         'small-vehicle',
-                         'large-vehicle',
-                         'ship',
-                         'tennis-court',
-                         'basketball-court',
-                         'storage-tank',
-                         'soccer-ball-field',
-                         'roundabout',
-                         'harbor',
-                         'swimming-pool',
-                         'helicopter'
-                         ]
-        self.color_pans = [(204,78,210),
-                           (0,192,255),
-                           (0,131,0),
-                           (240,176,0),
-                           (254,100,38),
-                           (0,0,255),
-                           (182,117,46),
-                           (185,60,129),
-                           (204,153,255),
-                           (80,208,146),
-                           (0,0,204),
-                           (17,90,197),
-                           (0,255,255),
+        self.category = ['bus', 'Pkw'] # , 'Truck', 'truck_trail', 'van_trail', 'cam', 'pkw_trail'
+          
+                         
+        self.color_pans = [
+                        # (204,78,210),
+                       # (0,192,255),
+                        #   (0,131,0),
+                         #  (240,176,0),
+                          # (254,100,38),
+                          # (0,0,255),
+                          # (182,117,46),
+                          # (185,60,129),
+                        #    (204,153,255),
+                        #    (80,208,146),
+                        #    (0,0,204),
+                        #    (17,90,197),
+                        #    (0,255,255),
                            (102,255,102),
                            (255,255,0)]
         self.num_classes = len(self.category)
@@ -57,7 +45,7 @@ class DOTA(BaseDataset):
 
     def load_image(self, index):
         img_id = self.img_ids[index]
-        imgFile = os.path.join(self.image_path, img_id+'.png')
+        imgFile = os.path.join(self.image_path, img_id+'.jpg')
         assert os.path.exists(imgFile), 'image {} not existed'.format(imgFile)
         img = cv2.imread(imgFile)
         return img
@@ -71,6 +59,7 @@ class DOTA(BaseDataset):
         valid_pts = []
         valid_cat = []
         valid_dif = []
+        valid_angle = []
         with open(self.load_annoFolder(self.img_ids[index]), 'r') as f:
             for i, line in enumerate(f.readlines()):
                 obj = line.split(' ')  # list object
@@ -83,20 +72,24 @@ class DOTA(BaseDataset):
                     y3 = min(max(float(obj[5]), 0), h - 1)
                     x4 = min(max(float(obj[6]), 0), w - 1)
                     y4 = min(max(float(obj[7]), 0), h - 1)
+                    mid_x = min(max(float(obj[11]), 0), w - 1)
+                    mid_y = min(max(float(obj[12]), 0), w - 1)
                     # TODO: filter small instances
                     xmin = max(min(x1, x2, x3, x4), 0)
                     xmax = max(x1, x2, x3, x4)
                     ymin = max(min(y1, y2, y3, y4), 0)
                     ymax = max(y1, y2, y3, y4)
                     if ((xmax - xmin) > 10) and ((ymax - ymin) > 10):
-                        valid_pts.append([[x1,y1], [x2,y2], [x3,y3], [x4,y4]])
+                        valid_pts.append([[x1,y1], [x2,y2], [x3,y3], [x4,y4], [mid_x, mid_y]])
                         valid_cat.append(self.cat_ids[obj[8]])
                         valid_dif.append(int(obj[9]))
+                        valid_angle.append(float(obj[10]))
         f.close()
         annotation = {}
         annotation['pts'] = np.asarray(valid_pts, np.float32)
         annotation['cat'] = np.asarray(valid_cat, np.int32)
         annotation['dif'] = np.asarray(valid_dif, np.int32)
+        annotation['angle'] = np.asarray(valid_angle, np.float32)
         # pts0 = np.asarray(valid_pts, np.float32)
         # img = self.load_image(index)
         # for i in range(pts0.shape[0]):

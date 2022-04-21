@@ -79,7 +79,9 @@ class TrainModule(object):
     def train_network(self, args):
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), args.init_lr)
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.96, last_epoch=-1)
+        # self.optimizer = torch.optim.SGD(self.model.parameters(), args.init_lr)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.97, last_epoch=-1)
+        # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9, last_epoch=-1)
         save_path = 'weights_'+args.dataset
         start_epoch = 1
         
@@ -135,7 +137,7 @@ class TrainModule(object):
 
             np.savetxt(os.path.join(save_path, 'train_loss.txt'), train_loss, fmt='%.6f')
 
-            if epoch % 5 == 0 or epoch > 20:
+            if epoch % 10 == 0:
                 self.save_model(os.path.join(save_path, 'model_{}.pth'.format(epoch)),
                                 epoch,
                                 self.model,

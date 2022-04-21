@@ -5,6 +5,8 @@ import torch
 class CombinationModule(nn.Module):
     def __init__(self, c_low, c_up, batch_norm=False, group_norm=False, instance_norm=False):
         super(CombinationModule, self).__init__()
+        c_low = int(c_low)
+        c_up = int(c_up)
         if batch_norm:
             self.up =  nn.Sequential(nn.Conv2d(c_low, c_up, kernel_size=3, padding=1, stride=1),
                                      nn.BatchNorm2d(c_up),

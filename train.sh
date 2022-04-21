@@ -1,0 +1,2 @@
+# nohup python main.py --data_dir DLR_Dataset/Crop/ --num_epoch 100 --batch_size 8 --dataset dota --phase train --resume_train weights_dota/model_40.pth &
+nohup python main.py --data_dir DLR_Dataset/Crop/ --num_epoch 100 --batch_size 8 --dataset dota --phase train &

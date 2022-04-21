@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 import torch
+import numpy as np
 
 class DecDecoder(object):
     def __init__(self, K, conf_thresh, num_classes):
@@ -49,6 +50,9 @@ class DecDecoder(object):
     def ctdet_decode(self, pr_decs):
         heat = pr_decs['hm']
         wh = pr_decs['wh']
+        angles = pr_decs['angle']*np.pi
+        angles = angles.cpu().numpy() 
+        angles = np.resize(angles, (1,7,1000,1000))
         reg = pr_decs['reg']
         cls_theta = pr_decs['cls_theta']
 
@@ -78,6 +82,7 @@ class DecDecoder(object):
         ll_x = (xs+wh[..., 6:7])*mask + (xs-wh[..., 8:9]/2)*(1.-mask)
         ll_y = (ys+wh[..., 7:8])*mask + (ys)*(1.-mask)
         #
+        # angle = angles[0][int(xs)][int(ys)]
         detections = torch.cat([xs,                      # cen_x
                                 ys,                      # cen_y
                                 tt_x,
@@ -94,4 +99,4 @@ class DecDecoder(object):
 
         index = (scores>self.conf_thresh).squeeze(0).squeeze(1)
         detections = detections[:,index,:]
-        return detections.data.cpu().numpy()
+        return detections.data.cpu().numpy(), angles

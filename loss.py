@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
+import math
 
 
 class BCELoss(nn.Module):
@@ -109,6 +111,11 @@ class LossAll(torch.nn.Module):
         self.L_wh =  OffSmoothL1Loss()
         self.L_off = OffSmoothL1Loss()
         self.L_cls_theta = BCELoss()
+        # self.L_angle = nn.L1Loss(reduction='sum')
+        # self.L_angle = nn.SmoothL1Loss(reduction='sum')
+        self.L_angle = nn.MSELoss(reduction='sum')
+        # self.L_angle = FocalLoss()
+        self.print_sum = 0
 
     def forward(self, pr_decs, gt_batch):
         hm_loss  = self.L_hm(pr_decs['hm'], gt_batch['hm'])
@@ -116,17 +123,56 @@ class LossAll(torch.nn.Module):
         off_loss = self.L_off(pr_decs['reg'], gt_batch['reg_mask'], gt_batch['ind'], gt_batch['reg'])
         ## add
         cls_theta_loss = self.L_cls_theta(pr_decs['cls_theta'], gt_batch['reg_mask'], gt_batch['ind'], gt_batch['cls_theta'])
+        # angle_label = torch.ones_like(gt_batch['angle'])*2
 
-        if isnan(hm_loss) or isnan(wh_loss) or isnan(off_loss):
-            print('hm loss is {}'.format(hm_loss))
-            print('wh loss is {}'.format(wh_loss))
-            print('off loss is {}'.format(off_loss))
 
+        # pr_angle = pr_decs['angle']*math.pi*gt_batch['angle_mask']
+        if self.print_sum % 10 == 0:
+            print('hm loss is {}'.format(hm_loss),'wh loss is {}'.format(wh_loss), 'off loss is {}'.format(off_loss))
+        self.print_sum += 1
+        if self.print_sum > 1000:
+            self.print_sum = 0
+        '''
+        pr_mask = pr_decs['hm'].ge(0.3)
+        pr_angle = pr_mask*pr_decs['angle']*math.pi
+        gt_angle = gt_batch['angle']*math.pi
+        
+        pr_circle_pos = []
+        gt_circle_pos = []
+
+        pr_circle_pos.append(torch.cos(pr_angle))
+        pr_circle_pos.append(torch.sin(pr_angle))
+
+        gt_circle_pos.append(torch.cos(gt_angle))
+        gt_circle_pos.append(torch.sin(gt_angle))
+
+        pr_circle_pos = torch.stack(pr_circle_pos, 1)
+        gt_circle_pos = torch.stack(gt_circle_pos, 1)
+
+        # angle_loss = self.L_angle(pr_circle_pos, gt_circle_pos)/(torch.sum(gt_batch['angle_mask'])+1)
+        angle_loss = self.L_angle(pr_circle_pos, gt_circle_pos)/(torch.sum(pr_mask)+2)
+        # angle_loss = angle_loss +  torch.mean(torch.abs(pr_decs['angle']))*0.1
+
+
+        # angle_dev = torch.min(torch.abs(pr_angle-gt_angle), angle_label - torch.abs(pr_angle)-torch.abs(gt_angle))*gt_batch['angle_mask']
+        # angle_ratio = Variable(torch.sum(pr_decs['hm'], dim=(1, ), keepdim=True))
+        # angle_ratio = torch.sum(pr_decs['hm'], dim=(1, ), keepdim=True)
+        # angle_taget = torch.zeros_like(angle_dev, dtype=torch.float32)
+        # angle_loss = self.L_angle(angle_dev, angle_taget)*(gt_batch['angle_mask'].shape[2])*(gt_batch['angle_mask'].shape[3])/(torch.sum(gt_batch['angle_mask'])+1)
+        # angle_loss = angle_loss + torch.abs(torch.mean(pr_angle))*0.1
+        # angle_abs = angle_label - torch.abs(pr_decs['wh'][:,10,:,:]) - torch.abs(gt_batch['angle'])
+        # angle_taget = torch.zeros_like(angle_abs)
+        # angle_loss = self.L_angle(angle_abs, angle_taget)
+        # angle_loss = self.L_angle(pr_decs['wh'][:,10,:,:], gt_batch['angle'])
+
+        # if isnan(hm_loss) or isnan(wh_loss) or isnan(off_loss):
+        
         # print(hm_loss)
         # print(wh_loss)
         # print(off_loss)
         # print(cls_theta_loss)
         # print('-----------------')
+        '''
 
         loss =  hm_loss + wh_loss + off_loss + cls_theta_loss
         return loss

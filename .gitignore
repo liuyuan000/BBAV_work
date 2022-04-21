@@ -1,0 +1,10 @@
+weights_*
+result_*
+DLR_*
+__pyca*
+log/
+runs/
+merge_dota/
+*.out
+*.zip
+dota_bbav/

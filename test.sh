@@ -1,0 +1,1 @@
+python main.py --data_dir DLR_Dataset/Crop/ --batch_size 16 --dataset dota --phase test --resume model_last.pth

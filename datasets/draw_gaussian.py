@@ -47,3 +47,20 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
     if min(masked_gaussian.shape) > 0 and min(masked_heatmap.shape) > 0:  # TODO debug
         np.maximum(masked_heatmap, masked_gaussian * k, out=masked_heatmap)
     return heatmap
+
+def draw_angle_gaussian(angle_mask_list, heatmap, center, radius, angle):
+    x, y = int(center[0]), int(center[1])
+
+    height, width = heatmap.shape[0:2]
+    radius = 2 if radius < 4 else radius//2
+
+    top = 0 if (x-radius)<0 else x-radius
+    bottom = height if (x+radius)>height else x+radius
+
+    left = 0 if (y-radius)<0 else y-radius
+    right = width if (y+radius) > width else y+radius
+
+    heatmap[top:bottom, left:right] = angle
+    angle_mask_list[top:bottom, left:right] = 1.0
+
+    return angle_mask_list, heatmap

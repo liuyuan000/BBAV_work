@@ -3,7 +3,7 @@ import cv2
 import torch
 import numpy as np
 import math
-from .draw_gaussian import draw_umich_gaussian, gaussian_radius
+from .draw_gaussian import draw_umich_gaussian, gaussian_radius, draw_angle_gaussian
 from .transforms import random_flip, load_affine_matrix, random_crop_info, ex_box_jaccard
 from . import data_augment
 
@@ -87,25 +87,33 @@ class BaseDataset(data.Dataset):
         size_thresh = 3
         out_rects = []
         out_cat = []
-        for pt_old, cat in zip(annotation['pts'] , annotation['cat']):
+        angle_cat = []
+        for pt_old, cat, angle in zip(annotation['pts'] , annotation['cat'] , annotation['angle']):
             if (pt_old<0).any() or (pt_old[:,0]>self.input_w-1).any() or (pt_old[:,1]>self.input_h-1).any():
-                pt_new = pt_old.copy()
+                pt_new = pt_old[0:4].copy()
                 pt_new[:,0] = np.minimum(np.maximum(pt_new[:,0], 0.), self.input_w - 1)
                 pt_new[:,1] = np.minimum(np.maximum(pt_new[:,1], 0.), self.input_h - 1)
-                iou = ex_box_jaccard(pt_old.copy(), pt_new.copy())
+                mid_x = np.minimum(np.maximum(pt_old[4][0]/self.down_ratio, 0.), self.input_h - 1)
+                mid_y = np.minimum(np.maximum(pt_old[4][1]/self.down_ratio, 0.), self.input_h - 1)
+                iou = ex_box_jaccard(pt_old[0:4].copy(), pt_new.copy())
                 if iou>0.6:
                     rect = cv2.minAreaRect(pt_new/self.down_ratio)
                     if rect[1][0]>size_thresh and rect[1][1]>size_thresh:
-                        out_rects.append([rect[0][0], rect[0][1], rect[1][0], rect[1][1], rect[2]])
+                        out_rects.append([rect[0][0], rect[0][1], rect[1][0], rect[1][1], rect[2], mid_x, mid_y])
                         out_cat.append(cat)
+                        angle_cat.append(angle)
             else:
-                rect = cv2.minAreaRect(pt_old/self.down_ratio)
+                rect = cv2.minAreaRect(pt_old[0:4]/self.down_ratio)
+                mid_x = np.minimum(np.maximum(pt_old[4][0]/self.down_ratio, 0.), self.input_h - 1)
+                mid_y = np.minimum(np.maximum(pt_old[4][1]/self.down_ratio, 0.), self.input_h - 1)
                 if rect[1][0]<size_thresh and rect[1][1]<size_thresh:
                     continue
-                out_rects.append([rect[0][0], rect[0][1], rect[1][0], rect[1][1], rect[2]])
+                out_rects.append([rect[0][0], rect[0][1], rect[1][0], rect[1][1], rect[2], mid_x, mid_y])
                 out_cat.append(cat)
+                angle_cat.append(angle)
         out_annotations['rect'] = np.asarray(out_rects, np.float32)
         out_annotations['cat'] = np.asarray(out_cat, np.uint8)
+        out_annotations['angle'] = np.asarray(angle_cat, np.float32)
         return image, out_annotations
 
     def __len__(self):
@@ -161,7 +169,7 @@ class BaseDataset(data.Dataset):
         image_w = self.input_w // self.down_ratio
 
         hm = np.zeros((self.num_classes, image_h, image_w), dtype=np.float32)
-        wh = np.zeros((self.max_objs, 10), dtype=np.float32)
+        wh = np.zeros((self.max_objs, 12), dtype=np.float32)# 10
         ## add
         cls_theta = np.zeros((self.max_objs, 1), dtype=np.float32)
         ## add end
@@ -173,15 +181,22 @@ class BaseDataset(data.Dataset):
         # copy_image1 = cv2.resize(image, (image_w, image_h))
         # copy_image2 = copy_image1.copy()
         # ##########################################################################################
+        angle_list = np.zeros((self.num_classes, image_h, image_w), dtype=np.float32)
+        angle_mask_list = np.zeros((self.num_classes, image_h, image_w), dtype=np.float32)
+        # angle_radius_list = [[-1,-1], [-1,0], [-1,1], [0,-1], [0,0], [0,1], [1, -1],[1,0],[1,1]]
         for k in range(num_objs):
             rect = annotation['rect'][k, :]
-            cen_x, cen_y, bbox_w, bbox_h, theta = rect
+            cen_x, cen_y, bbox_w, bbox_h, theta, mid_x, mid_y = rect
+            # for angle_radius in angle_radius_list:
+                # if cen_x + angle_radius[0] > 0 and cen_x + angle_radius[0] < image_h and cen_y + angle_radius[1] > 0 and cen_y + angle_radius[1] < image_w:
+                #     angle_list[0][int(cen_x)+angle_radius[0]][int(cen_y) + angle_radius[1]] = annotation['angle'][k]
             # print(theta)
             radius = gaussian_radius((math.ceil(bbox_h), math.ceil(bbox_w)))
             radius = max(0, int(radius))
             ct = np.asarray([cen_x, cen_y], dtype=np.float32)
             ct_int = ct.astype(np.int32)
             draw_umich_gaussian(hm[annotation['cat'][k]], ct_int, radius)
+            draw_angle_gaussian(angle_mask_list[annotation['cat'][k]], angle_list[annotation['cat'][k]], ct_int, radius, annotation['angle'][k])
             ind[k] = ct_int[1] * image_w + ct_int[0]
             reg[k] = ct - ct_int
             reg_mask[k] = 1
@@ -215,6 +230,7 @@ class BaseDataset(data.Dataset):
             # horizontal channel
             w_hbbox, h_hbbox = self.cal_bbox_wh(pts_4)
             wh[k, 8:10] = 1. * w_hbbox, 1. * h_hbbox
+            wh[k, 10:12] = [mid_x, mid_y] - ct
             #####################################################################################
             # # draw
             # cv2.line(copy_image2, (cen_x, cen_y), (int(cen_x), int(cen_y-wh[k, 9]/2)), (0, 0, 255), 1, 1)
@@ -241,7 +257,7 @@ class BaseDataset(data.Dataset):
         #             cv2.destroyAllWindows()
         #             exit()
         # #########################################################################################
-
+        
         ret = {'input': image,
                'hm': hm,
                'reg_mask': reg_mask,
@@ -249,6 +265,8 @@ class BaseDataset(data.Dataset):
                'wh': wh,
                'reg': reg,
                'cls_theta':cls_theta,
+                'angle':angle_list,
+                'angle_mask':angle_mask_list,
                }
         return ret
 
