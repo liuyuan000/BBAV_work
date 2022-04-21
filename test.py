@@ -111,7 +111,7 @@ class TestModule(object):
             torch.cuda.synchronize(self.device)
             decoded_pts = []
             decoded_scores = []
-            predictions, angles = self.decoder.ctdet_decode(pr_decs)
+            predictions = self.decoder.ctdet_decode(pr_decs)
             # angles = torch.squeeze(angles, 0)
             # angles = torch.squeeze(angles, 0).cpu().numpy()
             
@@ -167,11 +167,12 @@ class TestModule(object):
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(rr[0]), int(rr[1])), (255,0,255),1,1)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(bb[0]), int(bb[1])), (0,255,0),1,1)
                     cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(ll[0]), int(ll[1])), (255,0,0),1,1)
+                    cv2.circle(ori_image, (int(pred[8]), int(pred[9])), 2,(255,255,255), 2)
                     # if int(cen_pts[0]/down_ratio) < angles.shape[0] and int(cen_pts[1]/down_ratio) < angles.shape[1]:
-                    angle_point = [0,0]
-                    angle_point[0] = cen_pts[0] + math.cos(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
-                    angle_point[1] = cen_pts[1] + math.sin(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
-                    cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(angle_point[0]), int(angle_point[1])), (255,255,255),2,2)
+                    # angle_point = [0,0]
+                    # angle_point[0] = cen_pts[0] + math.cos(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
+                    # angle_point[1] = cen_pts[1] + math.sin(angles[0][int()][int(dsets.category.index(cat))][int(cen_pts[1])])*30
+                    # cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(angle_point[0]), int(angle_point[1])), (255,255,255),2,2)
 
                     # cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(tl[0]), int(tl[1])), (0,0,255),1,1)
                     # cv2.line(ori_image, (int(cen_pts[0]), int(cen_pts[1])), (int(tr[0]), int(tr[1])), (255,0,255),1,1)

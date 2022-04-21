@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--resume', type=str, default='model_last.pth', help='Weights resumed in testing and evaluation')
     parser.add_argument('--dataset', type=str, default='dota', help='Name of dataset')
     parser.add_argument('--data_dir', type=str, default='DLR_Dataset/Crop/', help='Data directory')
-    parser.add_argument('--phase', type=str, default='train', help='Phase choice= {train, test, eval}')
+    parser.add_argument('--phase', type=str, default='test', help='Phase choice= {train, test, eval}')
     parser.add_argument('--wh_channels', type=int, default=8, help='Number of channels for the vectors (4x2)')
     args = parser.parse_args()
     return args

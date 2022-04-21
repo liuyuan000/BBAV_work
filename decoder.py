@@ -50,9 +50,9 @@ class DecDecoder(object):
     def ctdet_decode(self, pr_decs):
         heat = pr_decs['hm']
         wh = pr_decs['wh']
-        angles = pr_decs['angle']*np.pi
-        angles = angles.cpu().numpy() 
-        angles = np.resize(angles, (1,7,1000,1000))
+        # angles = pr_decs['angle']*np.pi
+        # angles = angles.cpu().numpy() 
+        # angles = np.resize(angles, (1,7,1000,1000))
         reg = pr_decs['reg']
         cls_theta = pr_decs['cls_theta']
 
@@ -67,7 +67,7 @@ class DecDecoder(object):
         clses = clses.view(batch, self.K, 1).float()
         scores = scores.view(batch, self.K, 1)
         wh = self._tranpose_and_gather_feat(wh, inds)
-        wh = wh.view(batch, self.K, 10)
+        wh = wh.view(batch, self.K, 12)
         # add
         cls_theta = self._tranpose_and_gather_feat(cls_theta, inds)
         cls_theta = cls_theta.view(batch, self.K, 1)
@@ -81,6 +81,9 @@ class DecDecoder(object):
         bb_y = (ys+wh[..., 5:6])*mask + (ys+wh[..., 9:10]/2)*(1.-mask)
         ll_x = (xs+wh[..., 6:7])*mask + (xs-wh[..., 8:9]/2)*(1.-mask)
         ll_y = (ys+wh[..., 7:8])*mask + (ys)*(1.-mask)
+
+        mid_x = (xs+wh[..., 10:11])
+        mid_y = (ys+wh[..., 11:12])
         #
         # angle = angles[0][int(xs)][int(ys)]
         detections = torch.cat([xs,                      # cen_x
@@ -93,10 +96,12 @@ class DecDecoder(object):
                                 bb_y,
                                 ll_x,
                                 ll_y,
+                                mid_x,
+                                mid_y,
                                 scores,
                                 clses],
                                dim=2)
 
         index = (scores>self.conf_thresh).squeeze(0).squeeze(1)
         detections = detections[:,index,:]
-        return detections.data.cpu().numpy(), angles
+        return detections.data.cpu().numpy()

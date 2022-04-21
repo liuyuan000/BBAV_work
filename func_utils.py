@@ -19,13 +19,14 @@ def decode_prediction(predictions, dsets, args, img_id, down_ratio):
         rr = np.asarray([pred[4], pred[5]], np.float32)
         bb = np.asarray([pred[6], pred[7]], np.float32)
         ll = np.asarray([pred[8], pred[9]], np.float32)
+        mid = np.asarray([pred[10], pred[11]], np.float32)
         tl = tt + ll - cen_pt
         bl = bb + ll - cen_pt
         tr = tt + rr - cen_pt
         br = bb + rr - cen_pt
-        score = pred[10]
-        clse = pred[11]
-        pts = np.asarray([tr, br, bl, tl], np.float32)
+        score = pred[12]
+        clse = pred[13]
+        pts = np.asarray([tr, br, bl, tl, mid], np.float32)
         pts[:, 0] = pts[:, 0] * down_ratio / args.input_w * w
         pts[:, 1] = pts[:, 1] * down_ratio / args.input_h * h
         pts0[dsets.category[int(clse)]].append(pts)
@@ -42,6 +43,8 @@ def non_maximum_suppression(pts, scores):
                                pts[:, 2:3, 1],
                                pts[:, 3:4, 0],
                                pts[:, 3:4, 1],
+                               pts[:, 4:5, 0],
+                               pts[:, 4:5, 1],
                                scores[:, np.newaxis]], axis=1)
     nms_item = np.asarray(nms_item, np.float64)
     keep_index = py_cpu_nms_poly_fast(dets=nms_item, thresh=0.1)
